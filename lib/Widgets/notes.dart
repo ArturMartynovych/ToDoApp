@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:todoapp/Widgets/new_note.dart';
 import 'package:todoapp/Widgets/notes_list/notes_list.dart';
 import 'package:todoapp/models/note.dart';
 
@@ -30,6 +31,29 @@ class _NotesState extends State<Notes> {
     ),
   ];
 
+  void _openNewNotePage() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => SingleChildScrollView(
+        child: Container(
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 50),
+            child: NewNote(onAddNewNote: _addNewNote),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _addNewNote(Note note) {
+    setState(() {
+      _enteredNote.add(note);
+    });
+  }
+
   void _removeNote(Note note) {
     setState(() {
       _enteredNote.remove(note);
@@ -60,6 +84,12 @@ class _NotesState extends State<Notes> {
           "ToDo",
           style: Theme.of(context).textTheme.bodyLarge,
         ),
+        actions: [
+          IconButton(
+            onPressed: _openNewNotePage,
+            icon: const Icon(Icons.add),
+          ),
+        ],
       ),
       body: Column(
         children: [
