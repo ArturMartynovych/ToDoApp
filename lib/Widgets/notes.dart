@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:todoapp/Widgets/notes_list.dart';
+import 'package:todoapp/Widgets/notes_list/notes_list.dart';
 import 'package:todoapp/models/note.dart';
 
 class Notes extends StatefulWidget {
