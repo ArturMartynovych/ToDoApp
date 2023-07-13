@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:todoapp/Widgets/new_note.dart';
 import 'package:todoapp/Widgets/notes_list/notes_list.dart';
 import 'package:todoapp/models/note.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Notes extends StatefulWidget {
   const Notes({super.key});
@@ -10,26 +14,60 @@ class Notes extends StatefulWidget {
   State<Notes> createState() => _NotesState();
 }
 
-class _NotesState extends State<Notes> {
-  final List<Note> _enteredNote = [
-    Note(
-      title: 'University',
-      note:
-          'Presentation for diploma, Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Maecenas porttitor congue massa. Fusce posuere, magna sed pulvinar ultricies, purus lectus malesuada libero, sit amet commodo magna eros quis urna. Nunc viverra imperdiet enim. Fusce est.',
-    ),
-    Note(
-      title: 'Work',
-      note: 'Go to work',
-    ),
-    Note(
-      title: 'Games',
-      note: 'Buy that super game',
-    ),
-    Note(
-      title: 'Home',
-      note: 'Prepare dinner',
-    ),
-  ];
+class _NotesState extends State<Notes> with WidgetsBindingObserver {
+  List<Note> _enteredNote = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    loadNotes();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      saveNotes();
+    } else if (state == AppLifecycleState.resumed) {
+      loadNotes();
+    }
+  }
+
+  Future<void> saveNotes() async {
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+
+    List<Map<String, String>> savedNotes = _enteredNote.map((note) {
+      return {
+        'title': note.title,
+        'note': note.note,
+      };
+    }).toList();
+
+    await preferences.setString('notes', jsonEncode(savedNotes));
+  }
+
+  Future<void> loadNotes() async {
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    String? savedNotesInJSON = preferences.getString('notes');
+
+    if (savedNotesInJSON != null) {
+      List<Map<String, dynamic>> savedNotes =
+          List<Map<String, dynamic>>.from(jsonDecode(savedNotesInJSON));
+      setState(() {
+        _enteredNote = savedNotes.map((noteMap) {
+          return Note(title: noteMap['title'], note: noteMap['note']);
+        }).toList();
+      });
+    }
+  }
 
   void _openNewNotePage() {
     showModalBottomSheet(
@@ -55,19 +93,59 @@ class _NotesState extends State<Notes> {
   }
 
   void _removeNote(Note note) {
+    final noteIndex = _enteredNote.indexOf(note);
     setState(() {
       _enteredNote.remove(note);
     });
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Notatka została usunięta',
+          style: GoogleFonts.nunito(
+            textStyle: TextStyle(
+              color: Theme.of(context).textTheme.labelSmall!.color,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        duration: const Duration(seconds: 3),
+        backgroundColor: Theme.of(context).cardColor,
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 16),
+        action: SnackBarAction(
+          label: 'Cofnij',
+          backgroundColor: Theme.of(context).textTheme.titleLarge!.color,
+          textColor: Theme.of(context).cardColor,
+          onPressed: () {
+            setState(() {
+              _enteredNote.insert(noteIndex, note);
+            });
+          },
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     Widget mainContent = Center(
-      child: Text(
-        "Brak notatek",
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontSize: 36,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Image(
+            image: AssetImage('lib/assets/no_notes.png'),
+          ),
+          Text(
+            "Brak notatek",
+            style: GoogleFonts.nunito(
+              textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontSize: 36,
+                  ),
             ),
+          ),
+          const SizedBox(height: 70),
+        ],
       ),
     );
 
@@ -82,7 +160,9 @@ class _NotesState extends State<Notes> {
       appBar: AppBar(
         title: Text(
           "ToDo",
-          style: Theme.of(context).textTheme.bodyLarge,
+          style: GoogleFonts.nunito(
+            textStyle: Theme.of(context).textTheme.bodyLarge,
+          ),
         ),
         actions: [
           IconButton(
@@ -93,7 +173,9 @@ class _NotesState extends State<Notes> {
       ),
       body: Column(
         children: [
-          Expanded(child: mainContent),
+          Expanded(
+            child: mainContent,
+          ),
         ],
       ),
     );
